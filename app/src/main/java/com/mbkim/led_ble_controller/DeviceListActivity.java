@@ -27,6 +27,10 @@ import java.util.Set;
  */
 @TargetApi(21)
 public class DeviceListActivity extends Activity{
+    //
+    public static String EXTRA_DEVICE_ADDRESS = "device_address";
+    public static final long SCAN_PERIOD = 10000;   // Stops scanning after a pre-defined scan period.
+
     // Member fields
     private Handler mHandler = null;
 
@@ -39,8 +43,6 @@ public class DeviceListActivity extends Activity{
     // UI stuff
     private Button mScanButton = null;
 
-    //
-    public static String EXTRA_DEVICE_ADDRESS = "device_address";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,8 +58,13 @@ public class DeviceListActivity extends Activity{
         mScanButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                mNewDevicesArrayAdapter.clear();
-                doDiscovery();
+                if(mBleManager.getState() == mBleManager.STATE_SCANNING){
+                    stopDiscovery();
+                } else {
+                    mNewDevicesArrayAdapter.clear();
+                    doDiscovery();
+                }
+
             }
         });
 
@@ -101,6 +108,7 @@ public class DeviceListActivity extends Activity{
         }
     }
 
+
     /**
      * Destroy 된 Activity를 다시 시작하기 : 정상적인 앱의 실행 중에 Activity가 Destroy 되는 시나리오가 몇가지가 있다.
      *   사용자가 Back 버튼을 눌렀을 때
@@ -115,6 +123,7 @@ public class DeviceListActivity extends Activity{
 
         // Make sure we're not doing discovery anymore.
         if(mBtAdapter != null){
+            mBleManager.scanLeDevice(false);
             mBtAdapter.cancelDiscovery();
         }
     }
@@ -210,16 +219,39 @@ public class DeviceListActivity extends Activity{
      * Start device discover with the BluetoothAdapter.
      */
     private void doDiscovery(){
-        setTitle("doDiscovery test");
-
-        // If we're already discovering, stop it.
-        if(mBleManager.getState() == BleManager.STATE_SCANNING) {
-            mScanButton.setText("Device scan start");
-            mBleManager.scanLeDevice(false);
-        }
+        setUI(true);
 
         // Request discover from BluetoothAdapter
-        mScanButton.setText("Device scan stop");
         mBleManager.scanLeDevice(true);
+
+        // Stops scanning after a pre-defined scan period.
+        mHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                stopDiscovery();
+            }
+        }, SCAN_PERIOD);
+    }
+
+
+    private void stopDiscovery() {
+        setUI(false);
+
+        mBleManager.scanLeDevice(false);
+    }
+
+
+    private void setUI(boolean state){
+        if(state) {
+            // Indicate scanning in the title
+            setTitle("BLE device scanning");
+
+            mScanButton.setText("Device scan stop");
+        } else {
+            // Indicate scanning in the title
+            setTitle("BLE device scanner");
+
+            mScanButton.setText("Device scan start");
+        }
     }
 }

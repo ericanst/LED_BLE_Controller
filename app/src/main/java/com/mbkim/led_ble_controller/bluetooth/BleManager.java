@@ -12,6 +12,10 @@ import android.bluetooth.le.ScanCallback;
 import android.content.Context;
 import android.os.Build;
 import android.os.Handler;
+import android.os.Message;
+import android.provider.SyncStateContract;
+
+import com.mbkim.led_ble_controller.utils.Constants;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +24,13 @@ import java.util.List;
  * Created by mbkim on 2017-09-04.
  */
 public class BleManager {
+    // Constants that indicate the current connection state.
+    public static final int STATE_NONE = 0; //Initialized
+    public static final int STATE_IDLE = 1;		// Not connected
+    public static final int STATE_SCANNING = 2; // Scanning
+    public static final int STATE_CONNECTING = 13;	// Connecting
+    public static final int STATE_CONNECTED = 16;   // Connected
+
     // Bluetooth
     private BluetoothAdapter mBluetoothAdapter = null;
     private BluetoothLeScanner BLEScanner = null;
@@ -35,22 +46,15 @@ public class BleManager {
     private ArrayList<BluetoothGattCharacteristic> mGattCharacteristics = new ArrayList<BluetoothGattCharacteristic>();
     private ArrayList<BluetoothGattCharacteristic> mWritableCharacteristics = new ArrayList<BluetoothGattCharacteristic>();
 
-    // System, Management
     private static BleManager mBleManager = null;
+
+    // System, Management
     private static Context mContext = null;
+    private Handler mActivityHandler = null;
     private Handler mHandler = null;
 
     // Parameters
     private int mState = -1;
-
-    // Constants that indicate the current connection state.
-    public static final int STATE_NONE = 0; //Initialized
-    public static final int STATE_IDLE = 1;		// Not connected
-    public static final int STATE_SCANNING = 2; // Scanning
-    public static final int STATE_CONNECTING = 13;	// Connecting
-    public static final int STATE_CONNECTED = 16;   // Connected
-
-    private static final long SCAN_PERIOD = 10000;   // Stops scanning after a pre-defined scan period.
 
 
     /**
@@ -65,7 +69,7 @@ public class BleManager {
         mHandler = handler;
         mContext = context;
 
-        if(mHandler == null){
+        if(handler == null) {
             mHandler = new Handler();
         }
 
@@ -85,31 +89,13 @@ public class BleManager {
     }
 
 
-    public boolean scanLeDevice(final boolean enable){
-        boolean isScanStarted = false;
-
+    public void scanLeDevice(final boolean enable){
         if(enable){
             if(mState == STATE_SCANNING){
-                return false;
+                return;
             }
 
             mState = STATE_SCANNING;
-
-            // Stops scanning after a pre-defined scan period.
-            mHandler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    mState = STATE_IDLE;
-
-                    if(Build.VERSION.SDK_INT < 21){
-                        mBluetoothAdapter.stopLeScan(mLeScanCallback);
-                    } else {
-                        BLEScanner.stopScan(scanCallback);
-                    }
-                }
-            }, SCAN_PERIOD);
-
-            isScanStarted = true;
 
             if(Build.VERSION.SDK_INT < 21){
                 mBluetoothAdapter.startLeScan(mLeScanCallback);
@@ -121,16 +107,12 @@ public class BleManager {
                 mState = STATE_IDLE;
             }
 
-            mState = STATE_IDLE;
-
-            if(Build.VERSION.SDK_INT < 21){
+            if(Build.VERSION.SDK_INT < 21) {
                 mBluetoothAdapter.stopLeScan(mLeScanCallback);
             } else {
                 BLEScanner.stopScan(scanCallback);
             }
         }
-
-        return isScanStarted;
     }
 
 
@@ -224,42 +206,32 @@ public class BleManager {
         @Override
         public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                // We've received data form remote.
-                System.out.println(characteristic.toString());
-
                 /*
-                 * onCharacteristicChanged callback receives ame message
-                 *
-                final byte[] data = characteristic.getValue();
-                if ((data != null) && (data.length > 0)) {
-                    final StringBuilder stringBuilder = new StringBuilder(data.length);
-                    //for(byte byteChar : data)
-                    //	stringBuilder.append(String.format("%02X ", byteChar));
+                 * onCharacteristicChanged callback receives same message
+                 */
+                if(characteristic.getValue() != null) {
+                    Message msg = mActivityHandler.obtainMessage();
+                    msg.what = Constants.MESSAGE_RECEIVE_FROM_DEVICE;
+                    msg.obj = characteristic.getValue();
 
-                    stringBuilder.append(data);
+                    mActivityHandler.sendMessage(msg);
                 }
 
                 if((mDefaultChar == null) && (isWritableCharacteristic(characteristic))) {
                     mDefaultChar = characteristic;
                 }
-                */
             }
         }
 
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-            // We've received data form remote.
-            System.out.println(characteristic.toString());
+            if(characteristic.getValue() != null) {
+                Message msg = mActivityHandler.obtainMessage();
+                msg.what = Constants.MESSAGE_RECEIVE_FROM_DEVICE;
+                msg.obj = characteristic.getValue();
 
-            final byte[] data = characteristic.getValue();
-            if ((data != null) && (data.length > 0)) {
-                final StringBuilder stringBuilder = new StringBuilder(data.length);
-                //for(byte byteChar : data)
-                //	stringBuilder.append(String.format("%02X ", byteChar));
-
-                stringBuilder.append(data);
+                mActivityHandler.sendMessage(msg);
             }
-
             if ((mDefaultChar == null) && (isWritableCharacteristic(characteristic))) {
                 mDefaultChar = characteristic;
             }
@@ -369,6 +341,64 @@ public class BleManager {
 
 
     /**
+     * Disconnects an existing connection or cancel a pending connection. The disconnection result
+     * is reported asynchronously through the
+     * {@code BluetoothGattCallback#onConnectionStateChange(android.bluetooth.BluetoothGatt, int, int)}
+     * callback.
+     */
+    public void disconnect() {
+        if (mBluetoothAdapter == null || mBluetoothGatt == null) {
+            return;
+        }
+        mBluetoothGatt.disconnect();
+    }
+
+
+    public boolean write(BluetoothGattCharacteristic chr, byte[] data) {
+        if(mBluetoothGatt == null) {
+            return false;
+        }
+
+        BluetoothGattCharacteristic writeableChar = null;
+
+        if(chr == null) {
+            if(mDefaultChar == null) {
+                for(BluetoothGattCharacteristic bgc : mWritableCharacteristics) {
+                    if(isWritableCharacteristic(bgc)) {
+                        writeableChar = bgc;
+                    }
+                }
+
+                if(writeableChar == null) {
+                    return false;
+                }
+            } else {
+                if(isWritableCharacteristic(mDefaultChar)) {
+                    writeableChar = mDefaultChar;
+                } else {
+                    mDefaultChar = null;
+
+                    return false;
+                }
+            }
+        } else {
+            if(isWritableCharacteristic(chr)) {
+                writeableChar = chr;
+            } else {
+                return false;
+            }
+        }
+
+        writeableChar.setValue(data);
+        writeableChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+        mBluetoothGatt.writeCharacteristic(writeableChar);
+        mDefaultChar = writeableChar;
+
+        return true;
+    }
+
+
+    /**
      * Enables or disables notification on a give characteristic.
      *
      * @param characteristic Characteristic to act on.
@@ -395,6 +425,10 @@ public class BleManager {
      */
     public void setScanCallback(BluetoothAdapter.LeScanCallback mLeScanCallback) {
         this.mLeScanCallback = mLeScanCallback;
+    }
+
+    public void setActivityHandler(Handler ActivityHandler) {
+        this.mActivityHandler = ActivityHandler;
     }
 
     public int getState(){

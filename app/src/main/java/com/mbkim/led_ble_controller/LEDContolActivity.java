@@ -3,31 +3,55 @@ package com.mbkim.led_ble_controller;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.provider.Settings;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.ImageButton;
+import android.widget.SeekBar;
+import android.widget.TextView;
 
+import com.mbkim.led_ble_controller.bluetooth.BleCommunication;
 import com.mbkim.led_ble_controller.bluetooth.BleManager;
+import com.mbkim.led_ble_controller.utils.Constants;
 
 
 /**
  * Created by mbkim on 2017-09-03.
  */
-public class LEDContolActivity extends AppCompatActivity {
+public class LEDContolActivity extends AppCompatActivity implements View.OnClickListener{
+    // Defined
+    private static final int REQUEST_CONNECT_DEVICE = 1;
+
     // Bluetooth
     private BleManager mBleManager = null;
+    private BleCommunication mBleCommunication = null;
 
-    private static final int REQUEST_CONNECT_DEVICE = 1;
+    // System
+    private ActivityHandler mActivityHandler = null;
+
+    // UI
+    private TextView textView = null;
+    private ImageButton imageButton = null;
+    private SeekBar seekBar = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(com.mbkim.led_ble_controller.R.layout.activity_led_contol);
 
+        mActivityHandler = new ActivityHandler();
+
         mBleManager = BleManager.getInstance(this, null);
+
+        imageButton = (ImageButton) findViewById(R.id.led_butt);
+        imageButton.setOnClickListener(this);
     }
 
-    // 액션버튼 메뉴 맥션바에 집어 넣기
+    // 액션버튼 메뉴 션바에 집어 넣기
     @Override public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(com.mbkim.led_ble_controller.R.menu.menu, menu);
         return true;
@@ -61,6 +85,9 @@ public class LEDContolActivity extends AppCompatActivity {
                     // Attempt to connect to the device.
                     if(address != null) {
                         mBleManager.connectGatt(this, true, address);
+
+                        mBleManager.setActivityHandler(mActivityHandler);
+                        mBleCommunication = new BleCommunication(mBleManager, mActivityHandler);
                     }
                 }
                 break;
@@ -73,5 +100,51 @@ public class LEDContolActivity extends AppCompatActivity {
     private void doScan() {
         Intent intent = new Intent(this, DeviceListActivity.class);
         startActivityForResult(intent, REQUEST_CONNECT_DEVICE);
+    }
+
+    @Override
+    public void onClick(View view) {
+        String sendStr = "hihihi";
+        int id = view.getId();
+
+        switch(id) {
+            case R.id.led_butt:
+                Message msg = mActivityHandler.obtainMessage();
+                msg.what = Constants.MESSAGE_SEND_TO_DEVICE;
+                msg.obj = sendStr;
+
+                mActivityHandler.sendMessage(msg);
+                break;
+        }
+    }
+
+    class ActivityHandler extends Handler {
+        byte[] buffer = null;
+        StringBuilder sb = new StringBuilder();
+
+        @Override
+        public void handleMessage(Message msg) {
+            switch(msg.what) {
+                case Constants.MESSAGE_SEND_TO_DEVICE:
+                    mBleCommunication.sendMessageInit();
+                    mBleCommunication.sendBleMessage((String) msg.obj);
+                    break;
+                case Constants.MESSAGE_RECEIVE_DEVICE_INFO:
+                    mBleCommunication.receiveMessageInit();
+
+                    break;
+                case Constants.MESSAGE_RECEIVE_FROM_DEVICE:
+                    buffer = (byte[]) msg.obj;
+                    for(final byte b: buffer)
+                        sb.append(String.format("%02x ", b & 0xff));
+                    System.out.println(sb);
+                    System.out.println(new String(buffer));
+                    break;
+                default:
+                    break;
+            }
+
+            super.handleMessage(msg);
+        }
     }
 }
