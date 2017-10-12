@@ -46,9 +46,6 @@ public class LEDContolActivity extends AppCompatActivity implements View.OnClick
         mActivityHandler = new ActivityHandler();
 
         mBleManager = BleManager.getInstance(this, null);
-
-        imageButton = (ImageButton) findViewById(R.id.led_butt);
-        imageButton.setOnClickListener(this);
     }
 
     // 액션버튼 메뉴 션바에 집어 넣기
@@ -129,11 +126,11 @@ public class LEDContolActivity extends AppCompatActivity implements View.OnClick
                     mBleCommunication.sendMessageInit();
                     mBleCommunication.sendBleMessage((String) msg.obj);
                     break;
-                case Constants.MESSAGE_RECEIVE_DEVICE_INFO:
+                case Constants.RECEIVE_CONNECTION_MESSAGE:
                     mBleCommunication.receiveMessageInit();
 
                     break;
-                case Constants.MESSAGE_RECEIVE_FROM_DEVICE:
+                case Constants.RECEIVE_BLE_DEVICE_STATE_MESSAGE:
                     buffer = (byte[]) msg.obj;
                     for(final byte b: buffer)
                         sb.append(String.format("%02x ", b & 0xff));

@@ -25,47 +25,31 @@
     </LinearLayout>
 
     <LinearLayout
-        android:orientation="vertical"
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom">
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="5sp"
+            android:layout_weight="1"
+            android:text="disconnect"/>
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="5sp"
+            android:layout_weight="1"
+            android:text="ALL LED ON"/>
+
+    </LinearLayout>
+
+    <ListView android:id="@+id/adapter_led_list"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:layout_marginTop="10sp"
-        android:layout_marginLeft="5sp"
-        android:layout_marginRight="5sp">
-
-        <LinearLayout
-            android:orientation="horizontal"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:layout_margin="3sp">
-
-            <ImageButton
-                android:id="@+id/led_butt"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:src="@mipmap/ic_launcher"/>
-
-            <LinearLayout
-                android:orientation="vertical"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent">
-
-                <TextView
-                    android:id="@+id/led_info"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginLeft="10sp"
-                    android:text="LED_RED"/>
-
-                <SeekBar
-                    android:id="@+id/led_control"
-                    android:layout_width="280dp"
-                    android:layout_height="match_parent" />
-
-            </LinearLayout>
-
-        </LinearLayout>
-
-    </LinearLayout>
+        android:layout_margin="5sp"/>
 
 </LinearLayout>

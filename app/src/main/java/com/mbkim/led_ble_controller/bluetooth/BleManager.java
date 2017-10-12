@@ -19,6 +19,7 @@ import com.mbkim.led_ble_controller.utils.Constants;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Created by mbkim on 2017-09-04.
@@ -210,11 +211,7 @@ public class BleManager {
                  * onCharacteristicChanged callback receives same message
                  */
                 if(characteristic.getValue() != null) {
-                    Message msg = mActivityHandler.obtainMessage();
-                    msg.what = Constants.MESSAGE_RECEIVE_FROM_DEVICE;
-                    msg.obj = characteristic.getValue();
-
-                    mActivityHandler.sendMessage(msg);
+                    msgSednToActivityHandler(Constants.RECEIVE_CONNECTION_MESSAGE, characteristic);
                 }
 
                 if((mDefaultChar == null) && (isWritableCharacteristic(characteristic))) {
@@ -226,15 +223,19 @@ public class BleManager {
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
             if(characteristic.getValue() != null) {
-                Message msg = mActivityHandler.obtainMessage();
-                msg.what = Constants.MESSAGE_RECEIVE_FROM_DEVICE;
-                msg.obj = characteristic.getValue();
-
-                mActivityHandler.sendMessage(msg);
+                msgSednToActivityHandler(Constants.RECEIVE_BLE_DEVICE_STATE_MESSAGE, characteristic);
             }
             if ((mDefaultChar == null) && (isWritableCharacteristic(characteristic))) {
                 mDefaultChar = characteristic;
             }
+        }
+
+        public void msgSednToActivityHandler(int type, BluetoothGattCharacteristic characteristic){
+            Message msg = mActivityHandler.obtainMessage();
+            msg.what = type;
+            msg.obj = characteristic.getValue();
+
+            mActivityHandler.sendMessage(msg);
         }
     };
 

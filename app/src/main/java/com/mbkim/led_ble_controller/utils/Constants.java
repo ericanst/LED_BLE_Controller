@@ -7,6 +7,9 @@ package com.mbkim.led_ble_controller.utils;
 public class Constants {
     // Message types sent from Service to Activity
     public static final int MESSAGE_SEND_TO_DEVICE = 100;
-    public static final int MESSAGE_RECEIVE_DEVICE_INFO = 200;
-    public static final int MESSAGE_RECEIVE_FROM_DEVICE = 201;
+    public static final int RECEIVE_CONNECTION_MESSAGE = 200;
+    public static final int RECEIVE_BLE_DEVICE_STATE_MESSAGE = 201;
+
+    public static final int REQUEST_ENABLE_BT = 1; // must be greater than 0
+
 }
