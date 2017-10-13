@@ -11,15 +11,12 @@ import android.support.v7.app.AppCompatActivity;
 import android.widget.Toast;
 
 import com.mbkim.led_ble_controller.bluetooth.BleManager;
+import com.mbkim.led_ble_controller.utils.Constants;
 
 public class MainActivity extends AppCompatActivity implements PermissionControl.Callback{
-    private BluetoothAdapter mBluetoothAdapter = null;
     private BluetoothManager mBluetoothManager = null;
-    private BleManager mBleManager = null;
 
-    private boolean checkPerm = false;
-
-    private static final int REQUEST_ENABLE_BT = 1; // must be greater than 0
+    private int checkPerm = Constants.PERMISSION_DEFAULT;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,22 +32,21 @@ public class MainActivity extends AppCompatActivity implements PermissionControl
 
         // Initializes Bluetooth adapter.
         mBluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
-        mBluetoothAdapter = mBluetoothManager.getAdapter();
     }
 
     @Override
     protected void onResume(){
         super.onResume();
+
         PermissionControl.checkPermission(this);
 
-        if(checkPerm){
-            checkPerm = false;
-
+        if(checkPerm == Constants.PERMISSION_TRUE){
             Intent intent = new Intent(this, LEDContolActivity.class);
             startActivity(intent);
+        } else if(checkPerm == Constants.PERMISSION_FALSE){
+            Toast.makeText(this, "권한을 하나라도 허용하지 않으시면 프로그램을 실행할 수 없습니다.", Toast.LENGTH_SHORT).show();
         }
     }
-
 
     @Override
     public Activity getActivity() {
@@ -59,17 +55,27 @@ public class MainActivity extends AppCompatActivity implements PermissionControl
 
     // PermissionControl에서 호출하는 초기화 홤수.
     @Override
-    public void init() {
-        // Bluetooth support and on/off condition check
-        if (mBluetoothAdapter == null) {
-            Toast.makeText(this, "Can not find BluetoothAdapter.", Toast.LENGTH_SHORT).show();
-            finish();
-        } else {
-            if (!mBluetoothAdapter.isEnabled()) {
-                Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-                startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+    public void setCheckPerm(int checkPerm) {
+        this.checkPerm = checkPerm;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        boolean checkResult = true;
+
+        if (requestCode == PermissionControl.REQ_PERMISSION) {
+            // 권한쿼리 결과값을 모두 확인한 후 하나라도 승인되지 않았다면 false를 리턴.
+            for (int result : grantResults) {
+                if (result != PackageManager.PERMISSION_GRANTED) {
+                    checkResult = false;
+                    break;
+                }
+            }
+
+            if (checkResult) {
+                checkPerm = Constants.PERMISSION_TRUE;
             } else {
-                checkPerm = true;
+                checkPerm = Constants.PERMISSION_FALSE;
             }
         }
     }

@@ -1,18 +1,21 @@
 package com.mbkim.led_ble_controller;
 
 import android.app.Activity;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothManager;
 import android.content.Intent;
+import android.media.Image;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.provider.Settings;
 import android.support.v7.app.AppCompatActivity;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.ImageButton;
-import android.widget.SeekBar;
+import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.mbkim.led_ble_controller.bluetooth.BleCommunication;
 import com.mbkim.led_ble_controller.bluetooth.BleManager;
@@ -24,9 +27,13 @@ import com.mbkim.led_ble_controller.utils.Constants;
  */
 public class LEDContolActivity extends AppCompatActivity implements View.OnClickListener{
     // Defined
-    private static final int REQUEST_CONNECT_DEVICE = 1;
+    public static final int REQUEST_ENABLE_BT = 1; // must be greater than 0
+
+    private static final int REQUEST_CONNECT_DEVICE = 2;
 
     // Bluetooth
+    private BluetoothManager mBluetoothManager = null;
+    private BluetoothAdapter mBluetoothAdapter = null;
     private BleManager mBleManager = null;
     private BleCommunication mBleCommunication = null;
 
@@ -34,9 +41,10 @@ public class LEDContolActivity extends AppCompatActivity implements View.OnClick
     private ActivityHandler mActivityHandler = null;
 
     // UI
-    private TextView textView = null;
-    private ImageButton imageButton = null;
-    private SeekBar seekBar = null;
+    public Image connectionImg = null;
+    public TextView connectionText = null;
+    public Button DisconnectButt = null;
+    public Button allLedSetButt = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,7 +53,21 @@ public class LEDContolActivity extends AppCompatActivity implements View.OnClick
 
         mActivityHandler = new ActivityHandler();
 
+        // Initializes Bluetooth adapter.
+        mBluetoothManager = (BluetoothManager) getSystemService(this.BLUETOOTH_SERVICE);
+        mBluetoothAdapter = mBluetoothManager.getAdapter();
         mBleManager = BleManager.getInstance(this, null);
+
+        if (mBluetoothAdapter == null) {
+            Toast.makeText(this, "Can not find BluetoothAdapter.", Toast.LENGTH_SHORT).show();
+            finish();
+            android.os.Process.killProcess(android.os.Process.myPid());
+        } else {
+            if (!mBluetoothAdapter.isEnabled()) {
+                Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+            }
+        }
     }
 
     // 액션버튼 메뉴 션바에 집어 넣기
@@ -73,6 +95,15 @@ public class LEDContolActivity extends AppCompatActivity implements View.OnClick
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data){
         switch(requestCode){
+            case REQUEST_ENABLE_BT:
+                if (mBleManager.mBluetoothAdapter.isEnabled()) {
+                    Toast.makeText(this, "Bluetooth on.", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "Don't use this app, if you don't selected Bluetooth.", Toast.LENGTH_SHORT).show();
+                }
+
+                break;
+
             case REQUEST_CONNECT_DEVICE:
                 // When DeviceListActivity returns with a device to connect
                 if(resultCode == Activity.RESULT_OK){
@@ -87,6 +118,7 @@ public class LEDContolActivity extends AppCompatActivity implements View.OnClick
                         mBleCommunication = new BleCommunication(mBleManager, mActivityHandler);
                     }
                 }
+
                 break;
         }
     }
@@ -115,6 +147,18 @@ public class LEDContolActivity extends AppCompatActivity implements View.OnClick
         }
     }
 
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        // TODO Auto-generated method stub
+        if(keyCode== KeyEvent.KEYCODE_BACK ){
+            moveTaskToBack(true);
+            android.os.Process.killProcess(android.os.Process.myPid());
+        }
+
+        return super.onKeyDown(keyCode, event);
+    }
+
+
     class ActivityHandler extends Handler {
         byte[] buffer = null;
         StringBuilder sb = new StringBuilder();
@@ -125,6 +169,7 @@ public class LEDContolActivity extends AppCompatActivity implements View.OnClick
                 case Constants.MESSAGE_SEND_TO_DEVICE:
                     mBleCommunication.sendMessageInit();
                     mBleCommunication.sendBleMessage((String) msg.obj);
+
                     break;
                 case Constants.RECEIVE_CONNECTION_MESSAGE:
                     mBleCommunication.receiveMessageInit();

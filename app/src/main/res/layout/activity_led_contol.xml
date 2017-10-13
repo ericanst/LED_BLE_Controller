@@ -11,11 +11,13 @@
         android:layout_marginTop="5sp">
 
         <ImageView
+            android:id="@+id/connection_img"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:src="@mipmap/ic_launcher"/>
 
         <TextView
+            android:id="@+id/connection_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_margin="5sp"
@@ -31,6 +33,7 @@
         android:layout_gravity="bottom">
 
         <Button
+            android:id="@+id/ble_disconnect"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_margin="5sp"
@@ -38,6 +41,7 @@
             android:text="disconnect"/>
 
         <Button
+            android:id="@+id/all_led_set"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_margin="5sp"
@@ -46,7 +50,8 @@
 
     </LinearLayout>
 
-    <ListView android:id="@+id/adapter_led_list"
+    <ListView
+        android:id="@+id/adapter_led_list"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"

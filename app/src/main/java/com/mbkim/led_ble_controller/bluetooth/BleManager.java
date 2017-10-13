@@ -33,7 +33,7 @@ public class BleManager {
     public static final int STATE_CONNECTED = 16;   // Connected
 
     // Bluetooth
-    private BluetoothAdapter mBluetoothAdapter = null;
+    public BluetoothAdapter mBluetoothAdapter = null;
     private BluetoothLeScanner BLEScanner = null;
     private ScanCallback scanCallback = null;
     private BluetoothAdapter.LeScanCallback mLeScanCallback = null;
@@ -69,10 +69,6 @@ public class BleManager {
         mState = STATE_NONE;
         mHandler = handler;
         mContext = context;
-
-        if(handler == null) {
-            mHandler = new Handler();
-        }
 
         if(mContext == null){
             return;
@@ -354,7 +350,12 @@ public class BleManager {
         mBluetoothGatt.disconnect();
     }
 
-
+    /**
+     * Msg
+     * @param chr
+     * @param data
+     * @return
+     */
     public boolean write(BluetoothGattCharacteristic chr, byte[] data) {
         if(mBluetoothGatt == null) {
             return false;

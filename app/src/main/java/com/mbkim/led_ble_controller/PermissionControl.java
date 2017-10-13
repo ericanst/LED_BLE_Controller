@@ -5,14 +5,17 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.support.annotation.NonNull;
 import android.widget.Toast;
+
+import com.mbkim.led_ble_controller.utils.Constants;
 
 /**
  * Created by mbkim on 2017-09-03.
  */
 public class PermissionControl {
     // 권한 요청 코드
-    private static final int REQ_PERMISSION = 9760345;
+    public static final int REQ_PERMISSION = 9760345;
     private static Callback callback = null;
 
     // 요청할 권한 목록
@@ -39,47 +42,20 @@ public class PermissionControl {
                 }
             }
 
+
             // 퍼미션이 모두 true이면 그냥 프로그램 실행
             if (permCheck) {
-                callback.init();
+                callback.setCheckPerm(Constants.PERMISSION_TRUE);
             } else {
                 activity.requestPermissions(PERMISSION_ARRAY, REQ_PERMISSION);
             }
         } else {
-            callback.init();
-        }
-    }
-
-
-    // 권한체크 후 콜백 처리
-    public static void onCheckResult(int requestCode, int[] grantResults) {
-        boolean checkResult = true;
-
-        if (requestCode == REQ_PERMISSION) {
-            // 권한쿼리 결과값을 모두 확인한 후 하나라도 승인되지 않았다면 false를 리턴.
-            for(int result : grantResults){
-                if(result != PackageManager.PERMISSION_GRANTED) {
-                    checkResult = false;
-                    break;
-                }
-            }
-
-            if(callback != null){
-                if(checkResult) {
-                    callback.init();
-                } else {
-                    Toast.makeText(callback.getActivity()
-                            , "권한을 허용하지 않으시면 프로그램을 실행할 수 없습니다."
-                            , Toast.LENGTH_LONG).show();
-                }
-
-                callback = null;
-            }
+            callback.setCheckPerm(Constants.PERMISSION_TRUE);
         }
     }
 
     interface Callback {
         public Activity getActivity();
-        public void init();
+        public void setCheckPerm(int checkPerm);
     }
 }
