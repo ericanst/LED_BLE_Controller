@@ -13,6 +13,7 @@ import android.content.Context;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
+import android.provider.Settings;
 import android.provider.SyncStateContract;
 
 import com.mbkim.led_ble_controller.utils.Constants;
@@ -147,6 +148,7 @@ public class BleManager {
                 && (address.equals(mDefaultDevice.getAddress()))) {
             if (mBluetoothGatt.connect()) {
                 mState = STATE_CONNECTING;
+
                 return true;
             }
         }
@@ -167,7 +169,6 @@ public class BleManager {
 
         return true;
     }
-
 
     // Various callback method defined my the BLE API.
     private final BluetoothGattCallback mGattCallback = new BluetoothGattCallback() {
@@ -206,32 +207,31 @@ public class BleManager {
                 /*
                  * onCharacteristicChanged callback receives same message
                  */
+                /*
                 if(characteristic.getValue() != null) {
-                    msgSednToActivityHandler(Constants.RECEIVE_CONNECTION_MESSAGE, characteristic);
+
                 }
 
                 if((mDefaultChar == null) && (isWritableCharacteristic(characteristic))) {
                     mDefaultChar = characteristic;
                 }
+                */
             }
         }
 
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
             if(characteristic.getValue() != null) {
-                msgSednToActivityHandler(Constants.RECEIVE_BLE_DEVICE_STATE_MESSAGE, characteristic);
+
+                Message msg = mActivityHandler.obtainMessage();
+                msg.what = Constants.RECEIVE_BLE_DEVICE_STATE_MESSAGE;
+                msg.obj = characteristic.getValue();
+
+                mActivityHandler.sendMessage(msg);
             }
             if ((mDefaultChar == null) && (isWritableCharacteristic(characteristic))) {
                 mDefaultChar = characteristic;
             }
-        }
-
-        public void msgSednToActivityHandler(int type, BluetoothGattCharacteristic characteristic){
-            Message msg = mActivityHandler.obtainMessage();
-            msg.what = type;
-            msg.obj = characteristic.getValue();
-
-            mActivityHandler.sendMessage(msg);
         }
     };
 

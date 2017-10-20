@@ -54,20 +54,6 @@ public class DeviceListActivity extends Activity{
 
         mHandler = new Handler();
 
-        mScanButton = (Button) findViewById(com.mbkim.led_ble_controller.R.id.scanning_btn);
-        mScanButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if(mBleManager.getState() == mBleManager.STATE_SCANNING){
-                    stopDiscovery();
-                } else {
-                    mNewDevicesArrayAdapter.clear();
-                    doDiscovery();
-                }
-
-            }
-        });
-
         // Initialize array adapters. One for already paired devices and
         // one for newly discovered devices
         mPairedDevicesArrayAdapter = new ArrayAdapter<String>(this, com.mbkim.led_ble_controller.R.layout.adapter_device_name);
@@ -106,6 +92,20 @@ public class DeviceListActivity extends Activity{
         } else {
             mPairedDevicesArrayAdapter.add("noDevices");
         }
+
+        mScanButton = (Button) findViewById(com.mbkim.led_ble_controller.R.id.scanning_btn);
+        mScanButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(mBleManager.getState() == mBleManager.STATE_SCANNING){
+                    stopDiscovery();
+                } else {
+                    mNewDevicesArrayAdapter.clear();
+                    doDiscovery();
+                }
+
+            }
+        });
     }
 
 
@@ -127,31 +127,6 @@ public class DeviceListActivity extends Activity{
             mBtAdapter.cancelDiscovery();
         }
     }
-
-
-    /**
-     * The on-click listener for all devices in the ListViews
-     */
-    private AdapterView.OnItemClickListener mDeviceClickListener = new AdapterView.OnItemClickListener() {
-                @Override
-                public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
-                    // Cancel discovery because it's costly and we're about to connect
-                    mBtAdapter.cancelDiscovery();
-
-                    // Get the device MAC address.
-                    String address = ((Device) adapterView.getItemAtPosition(position)).getMAC();
-
-                    if(address != null) {
-                        // Create the result Intent and include the MAC address
-                        Intent intent = new Intent();
-                        intent.putExtra(EXTRA_DEVICE_ADDRESS, address);
-
-                        // Set result and finish this Activity
-                        setResult(Activity.RESULT_OK, intent);
-                        finish();
-                    }
-                }
-            };
 
     /**
      * Gets the scanning result after scanBledDevice method running finished.
@@ -214,6 +189,32 @@ public class DeviceListActivity extends Activity{
             });
         }
     };
+
+
+    /**
+     * The on-click listener for all devices in the ListViews
+     */
+    private AdapterView.OnItemClickListener mDeviceClickListener = new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
+                    // Cancel discovery because it's costly and we're about to connect
+                    mBtAdapter.cancelDiscovery();
+
+                    // Get the device MAC address.
+                    String address = ((Device) adapterView.getItemAtPosition(position)).getMAC();
+
+                    if(address != null) {
+                        // Create the result Intent and include the MAC address
+                        Intent intent = new Intent();
+                        intent.putExtra(EXTRA_DEVICE_ADDRESS, address);
+
+                        // Set result and finish this Activity
+                        setResult(Activity.RESULT_OK, intent);
+                        finish();
+                    }
+                }
+            };
+
 
     /**
      * Start device discover with the BluetoothAdapter.

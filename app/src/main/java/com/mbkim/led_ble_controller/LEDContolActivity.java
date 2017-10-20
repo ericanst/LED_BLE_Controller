@@ -4,16 +4,16 @@ import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothManager;
 import android.content.Intent;
-import android.media.Image;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
-import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -21,11 +21,13 @@ import com.mbkim.led_ble_controller.bluetooth.BleCommunication;
 import com.mbkim.led_ble_controller.bluetooth.BleManager;
 import com.mbkim.led_ble_controller.utils.Constants;
 
+import java.util.ArrayList;
+
 
 /**
  * Created by mbkim on 2017-09-03.
  */
-public class LEDContolActivity extends AppCompatActivity implements View.OnClickListener{
+public class LEDContolActivity extends AppCompatActivity {
     // Defined
     public static final int REQUEST_ENABLE_BT = 1; // must be greater than 0
 
@@ -41,10 +43,14 @@ public class LEDContolActivity extends AppCompatActivity implements View.OnClick
     private ActivityHandler mActivityHandler = null;
 
     // UI
-    public Image connectionImg = null;
-    public TextView connectionText = null;
-    public Button DisconnectButt = null;
-    public Button allLedSetButt = null;
+    private ImageView connectionImg = null;
+    private TextView connectionText = null;
+    private Button DisconnectButt = null;
+    private Button allLedSetButt = null;
+    private ListView listView = null;
+    private ListViewLedAdapter ledAdapter = null;
+    private ArrayList<ListViewLedItem> ledItems = null;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,6 +58,16 @@ public class LEDContolActivity extends AppCompatActivity implements View.OnClick
         setContentView(com.mbkim.led_ble_controller.R.layout.activity_led_contol);
 
         mActivityHandler = new ActivityHandler();
+
+        // UI
+        connectionImg = (ImageView) findViewById(R.id.connection_img);
+        connectionText = (TextView) findViewById(R.id.connection_text);
+
+        ledItems = new ArrayList<ListViewLedItem>();
+        ledAdapter = new ListViewLedAdapter(this, R.layout.adapter_led, ledItems, mActivityHandler);
+
+        listView = (ListView) findViewById(R.id.adapter_led_list);
+        listView.setAdapter(ledAdapter);
 
         // Initializes Bluetooth adapter.
         mBluetoothManager = (BluetoothManager) getSystemService(this.BLUETOOTH_SERVICE);
@@ -68,6 +84,9 @@ public class LEDContolActivity extends AppCompatActivity implements View.OnClick
                 startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
             }
         }
+
+        ledAdapter.clear();
+        ledAdapter.notifyDataSetChanged();
     }
 
     // 액션버튼 메뉴 션바에 집어 넣기
@@ -112,10 +131,13 @@ public class LEDContolActivity extends AppCompatActivity implements View.OnClick
 
                     // Attempt to connect to the device.
                     if(address != null) {
+                        mBleManager.setActivityHandler(mActivityHandler);
                         mBleManager.connectGatt(this, true, address);
 
-                        mBleManager.setActivityHandler(mActivityHandler);
                         mBleCommunication = new BleCommunication(mBleManager, mActivityHandler);
+
+                        ledAdapter.clear();
+                        ledAdapter.notifyDataSetChanged();
                     }
                 }
 
@@ -131,57 +153,64 @@ public class LEDContolActivity extends AppCompatActivity implements View.OnClick
         startActivityForResult(intent, REQUEST_CONNECT_DEVICE);
     }
 
-    @Override
-    public void onClick(View view) {
-        String sendStr = "hihihi";
-        int id = view.getId();
-
-        switch(id) {
-            case R.id.led_butt:
-                Message msg = mActivityHandler.obtainMessage();
-                msg.what = Constants.MESSAGE_SEND_TO_DEVICE;
-                msg.obj = sendStr;
-
-                mActivityHandler.sendMessage(msg);
-                break;
-        }
-    }
-
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
-        // TODO Auto-generated method stub
-        if(keyCode== KeyEvent.KEYCODE_BACK ){
-            moveTaskToBack(true);
-            android.os.Process.killProcess(android.os.Process.myPid());
-        }
-
-        return super.onKeyDown(keyCode, event);
-    }
-
-
     class ActivityHandler extends Handler {
-        byte[] buffer = null;
-        StringBuilder sb = new StringBuilder();
-
         @Override
         public void handleMessage(Message msg) {
+            byte[] buffer;
+
             switch(msg.what) {
                 case Constants.MESSAGE_SEND_TO_DEVICE:
-                    mBleCommunication.sendMessageInit();
-                    mBleCommunication.sendBleMessage((String) msg.obj);
+                    buffer = (byte[]) msg.obj;
+                    mBleCommunication.sendBleMessage(msg.arg1, msg.arg2, buffer);   // type, length, buffer
 
                     break;
-                case Constants.RECEIVE_CONNECTION_MESSAGE:
-                    mBleCommunication.receiveMessageInit();
 
-                    break;
                 case Constants.RECEIVE_BLE_DEVICE_STATE_MESSAGE:
                     buffer = (byte[]) msg.obj;
-                    for(final byte b: buffer)
-                        sb.append(String.format("%02x ", b & 0xff));
-                    System.out.println(sb);
-                    System.out.println(new String(buffer));
+                    mBleCommunication.getReceiveMessage(buffer);
+
                     break;
+
+                case Constants.LED_INIT_MESSAGE:
+                    buffer = (byte[]) msg.obj;
+
+                    Drawable drawable = null;
+                    String color = null;
+                    String state = null;
+                    int pinNum = buffer[0];
+                    int brightness = buffer[1];
+
+
+                    // LED color check.
+                    if(pinNum == Constants.LED_RED) {
+                        color= "LED_RED";
+                        drawable = getDrawable(R.drawable.led_on_red);
+                    } else if(pinNum == Constants.LED_GREEN) {
+                        color = "LED_GREEN";
+                        drawable = getDrawable(R.drawable.led_on_green);
+                    } else if(pinNum == Constants.LED_BLUE) {
+                        color = "LED_BLUE";
+                        drawable = getDrawable(R.drawable.led_on_blue);
+                    }
+
+                    // LED brightness check.
+                    if(brightness > 0) {
+                        state = "ON";
+                    } else if(brightness == 0){
+                        state = "OFF";
+                    } else if (brightness < 0) {
+                        state = "ON";
+                        brightness = brightness + 255;
+                    } else {
+                        state = "ERROR";
+                    }
+
+
+                    ledAdapter.addItem(drawable, getDrawable(R.drawable.led_off), color, state, brightness, pinNum);
+                    ledAdapter.notifyDataSetChanged();
+
+                    break;
+
                 default:
                     break;
             }
